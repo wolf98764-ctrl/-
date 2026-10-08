@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>互動式數學：比值計算練習 10 題</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- KaTeX CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <style>
+    /* 數學算式與 Slot 自訂樣式 */
+    .math-line {
+      font-size: 24px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      line-height: 1.8;
+      margin: 14px 0;
+    }
+    
+    .math, .math-display {
+      display: inline-flex;
+      align-items: center;
+      vertical-align: middle;
+    }
+    
+    .math-display {
+      justify-content: center;
+      width: 100%;
+      overflow-x: auto;
+      padding: 8px 0;
+    }
+    
+    .katex {
+      font-size: 1.15em;
+    }
+    
+    /* 互動填答 Slot 樣式 */
+    .slot {
+      min-width: 60px;
+      min-height: 48px;
+      padding: 4px 12px;
+      border: 3px solid #93c5fd;
+      border-radius: 12px;
+      background: #eff6ff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #1d4ed8;
+      cursor: pointer;
+      font-size: 24px;
+      font-weight: 800;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    
+    .slot.active {
+      animation: pulseSlot 1s infinite;
+      background: #dbeafe;
+      border-color: #2563eb;
+    }
+    
+    .slot.correct {
+      background: #dcfce7;
+      border-color: #22c55e;
+      color: #166534;
+    }
+    
+    @keyframes pulseSlot {
+      0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45); }
+      70% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+    }
+
+    /* 成功勾勾動畫 */
+    .checkmark-svg {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: block;
+      stroke-width: 3;
+      stroke: #22c55e;
+      stroke-miterlimit: 10;
+      box-shadow: inset 0px 0px 0px #22c55e;
+      animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+    }
+    .checkmark-circle {
+      stroke-dasharray: 166;
+      stroke-dashoffset: 166;
+      stroke-width: 3;
+      stroke-miterlimit: 10;
+      stroke: #22c55e;
+      fill: none;
+      animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+    }
+    .checkmark-check {
+      transform-origin: 50% 50%;
+      stroke-dasharray: 48;
+      stroke-dashoffset: 48;
+      animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+    }
+    @keyframes stroke { 100% { stroke-dashoffset: 0; } }
+    @keyframes scale { 0%, 100% { transform: none; } 50% { transform: scale3d(1.1, 1.1, 1); } }
+
+    /* 隱藏捲動條 */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col antialiased">
+
+  <!-- 頂部導覽列與題號區 -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between gap-2">
+      <!-- 單元名稱與題號捲動區 -->
+      <div class="flex items-center gap-3 overflow-hidden">
+        <span class="bg-blue-600 text-white font-bold text-sm md:text-base px-3 py-1.5 rounded-lg whitespace-nowrap shadow-sm">
+          比值單元練習
+        </span>
+        <div id="nav-questions" class="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
+          <!-- 由 JS 動態生成 10 個題目按鈕 -->
+        </div>
+      </div>
+      
+      <!-- 分數與計時區 -->
+      <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shrink-0">
+        <div class="text-xs md:text-sm font-semibold text-slate-600">
+          得分: <span id="score-text" class="text-blue-600 font-extrabold text-base md:text-lg">0</span>
+        </div>
+        <div class="w-px h-5 bg-slate-300"></div>
+        <div class="text-xs md:text-sm font-semibold text-slate-600 flex items-center gap-1">
+          ⏱️ <span id="timer-text" class="font-mono font-bold text-slate-800 text-base md:text-lg">07:00</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主內容雙欄區 -->
+  <main class="max-w-7xl mx-auto w-full flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+    
+    <!-- 左側：題目固定區 (Sticky) -->
+    <section class="md:col-span-5 lg:col-span-4 flex flex-col gap-4">
+      <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 sticky top-20">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+          <span id="question-phase" class="text-xs font-bold px-2.5 py-1 bg-amber-100 text-amber-800 rounded-md">
+            第一階段：整數比值
+          </span>
+          <span id="question-number-tag" class="text-xs font-bold text-slate-400">
+            第 1 / 10 題
+          </span>
+        </div>
+
+        <h2 class="text-lg md:text-xl font-bold text-slate-700 mb-2">題目題幹：</h2>
+        <div id="question-text" class="text-2xl md:text-3xl font-extrabold text-slate-900 my-4 p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
+          <!-- 題目 KaTeX 將會呈現於此 -->
+        </div>
+
+        <!-- 提示區塊（新增遮蔽功能） -->
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-500 flex items-center gap-1">💡 題目提示</span>
+          <button id="toggle-hint-btn" onclick="toggleHint()" class="text-xs font-bold px-3 py-1 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition flex items-center gap-1 shadow-sm">
+            🙈 遮蔽提示
+          </button>
+        </div>
+
+        <div id="question-hint-wrapper" class="relative overflow-hidden rounded-xl">
+          <div id="question-hint" class="text-sm md:text-base text-slate-600 bg-blue-50/70 p-3.5 rounded-xl border border-blue-100 transition-all duration-300">
+            <!-- 解題提示與備註 -->
+          </div>
+          <!-- 遮罩覆蓋層 -->
+          <div id="question-hint-cover" class="absolute inset-0 bg-slate-200/90 backdrop-blur-md rounded-xl flex items-center justify-center cursor-pointer transition-opacity duration-300 hidden" onclick="toggleHint()">
+            <span class="text-slate-700 font-extrabold text-sm flex items-center gap-1.5 bg-white px-3.5 py-2 rounded-xl shadow-md border border-slate-200">
+              🔒 提示已遮蔽（點擊顯示）
+            </span>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-400 flex justify-between items-center">
+          <span>💡 觀念：比值 = 前項 ÷ 後項</span>
+          <button onclick="resetCurrentQuestion()" class="text-blue-600 hover:underline font-semibold">重來本題</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右側：步驟解鎖流程區 -->
+    <section class="md:col-span-7 lg:col-span-8 flex flex-col gap-5">
+      <div id="steps-container" class="flex flex-col gap-5">
+        <!-- 動態繪製步驟區塊 -->
+      </div>
+    </section>
+  </main>
+
+  <!-- 完成結算 Modal -->
+  <div id="finish-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 text-center shadow-2xl transform transition-all border border-slate-100">
+      <div class="text-5xl mb-3">🎉</div>
+      <h3 class="text-2xl font-extrabold text-slate-800 mb-2">恭喜完成所有練習！</h3>
+      <p class="text-slate-500 mb-6">你做得太棒了！已經掌握比值的計算概念囉！</p>
+      
+      <div class="bg-slate-50 rounded-2xl p-4 mb-6 flex justify-around border border-slate-100">
+        <div>
+          <div class="text-xs text-slate-400 mb-1">最終總得分</div>
+          <div id="modal-final-score" class="text-3xl font-black text-blue-600">0</div>
+        </div>
+        <div class="w-px bg-slate-200"></div>
+        <div>
+          <div class="text-xs text-slate-400 mb-1">所用時間</div>
+          <div id="modal-final-time" class="text-3xl font-black text-slate-700">00:00</div>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button onclick="restartAll()" class="flex-1 py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition">
+          再做一次
+        </button>
+        <button onclick="closeModal()" class="py-3.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition">
+          關閉視窗
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- 題目資料庫 ---
+    const questionsData = [
+      {
+        id: 1,
+        phase: "【第一階段：整數比值】",
+        titleLatex: "28 : 7",
+        hint: "請將比化為除法算式：<mark class='bg-yellow-200 px-1 rounded'>前項 28</mark> 除以 <mark class='bg-yellow-200 px-1 rounded'>後項 7</mark>。",
+        steps: [
+          {
+            instruction: "請填入對應的除法算式數字：",
+            latexBefore: "",
+            slots: [{ ans: "28" }, { ans: "7" }],
+            latexMiddle: "\\div",
+            latexAfter: "",
+            options: ["28", "7", "4", "14", "21"]
+          },
+          {
+            instruction: "請計算出比值結果：",
+            latexBefore: "28 \\div 7 =",
+            slots: [{ ans: "4" }],
+            latexAfter: "",
+            options: ["3", "4", "5", "3.5", "4.5"]
+          }
+        ]
+      },
+      {
+        id: 2,
+        phase: "【第一階段：整數比值】",
+        titleLatex: "45 : 9",
+        hint: "請用「前項 ÷ 後項」列出除法算式。",
+        steps: [
+          {
+            instruction: "請填入對應的除法算式：",
+            slots: [{ ans: "45" }, { ans: "9" }],
+            latexMiddle: "\\div",
+            options: ["45", "9", "5", "15", "6"]
+          },
+          {
+            instruction: "請計算出最終比值：",
+            latexBefore: "45 \\div 9 =",
+            slots: [{ ans: "5" }],
+            options: ["4", "5", "6", "5.5", "4.5"]
+          }
+        ]
+      },
+      {
+        id: 3,
+        phase: "【第一階段：整數比值】",
+        titleLatex: "36 : 8",
+        hint: "計算 <mark class='bg-yellow-200 px-1 rounded'>36 ÷ 8</mark> 時，若無法整除請算至小數點。",
+        steps: [
+          {
+            instruction: "請填入除法算式：",
+            slots: [{ ans: "36" }, { ans: "8" }],
+            latexMiddle: "\\div",
+            options: ["36", "8", "4", "4.5", "18"]
+          },
+          {
+            instruction: "請算出比值 (小數)：",
+            latexBefore: "36 \\div 8 =",
+            slots: [{ ans: "4.5" }],
+            options: ["4", "4.5", "4.25", "5", "3.5"]
+          }
+        ]
+      },
+      {
+        id: 4,
+        phase: "【第一階段：整數比值】",
+        titleLatex: "15 : 4",
+        hint: "計算 <mark class='bg-yellow-200 px-1 rounded'>15 ÷ 4</mark>，請寫成小數。",
+        steps: [
+          {
+            instruction: "請填入除法算式：",
+            slots: [{ ans: "15" }, { ans: "4" }],
+            latexMiddle: "\\div",
+            options: ["15", "4", "3.75", "3.5", "3"]
+          },
+          {
+            instruction: "請算出除法結果：",
+            latexBefore: "15 \\div 4 =",
+            slots: [{ ans: "3.75" }],
+            options: ["3.5", "3.75", "3.25", "4", "3.8"]
+          }
+        ]
+      },
+      {
+        id: 5,
+        phase: "【第二階段：簡單小數】",
+        titleLatex: "8.4 : 4",
+        hint: "前項為小數：<mark class='bg-yellow-200 px-1 rounded'>8.4 ÷ 4</mark>，注意小數點位置對齊。",
+        steps: [
+          {
+            instruction: "請列出除法算式：",
+            slots: [{ ans: "8.4" }, { ans: "4" }],
+            latexMiddle: "\\div",
+            options: ["8.4", "4", "2.1", "2.4", "84"]
+          },
+          {
+            instruction: "請計算出比值：",
+            latexBefore: "8.4 \\div 4 =",
+            slots: [{ ans: "2.1" }],
+            options: ["2.1", "2.2", "1.2", "2.4", "4.2"]
+          }
+        ]
+      },
+      {
+        id: 6,
+        phase: "【第二階段：簡單小數】",
+        titleLatex: "6.5 : 5",
+        hint: "前項為小數：<mark class='bg-yellow-200 px-1 rounded'>6.5 ÷ 5</mark>。",
+        steps: [
+          {
+            instruction: "請填入除法算式：",
+            slots: [{ ans: "6.5" }, { ans: "5" }],
+            latexMiddle: "\\div",
+            options: ["6.5", "5", "1.3", "1.5", "13"]
+          },
+          {
+            instruction: "請算出最終比值：",
+            latexBefore: "6.5 \\div 5 =",
+            slots: [{ ans: "1.3" }],
+            options: ["1.2", "1.3", "1.4", "2.3", "1.5"]
+          }
+        ]
+      },
+      {
+        id: 7,
+        phase: "【第二階段：簡單小數】",
+        titleLatex: "18 : 4.5",
+        hint: "後項有小數，需擴分去小數點：<mark class='bg-yellow-200 px-1 rounded'>同乘以 10</mark> 變成整數計算。",
+        steps: [
+          {
+            instruction: "列出原始除法算式：",
+            slots: [{ ans: "18" }, { ans: "4.5" }],
+            latexMiddle: "\\div",
+            options: ["18", "4.5", "180", "45", "4"]
+          },
+          {
+            instruction: "去小數點（同乘 10）後的算式：",
+            slots: [{ ans: "180" }, { ans: "45" }],
+            latexMiddle: "\\div",
+            options: ["180", "45", "18", "4.5", "40"]
+          },
+          {
+            instruction: "計算出最終比值：",
+            latexBefore: "180 \\div 45 =",
+            slots: [{ ans: "4" }],
+            options: ["3", "4", "5", "4.5", "2"]
+          }
+        ]
+      },
+      {
+        id: 8,
+        phase: "【第三階段：前後項小數】",
+        titleLatex: "0.4 : 0.25",
+        hint: "前後項皆為小數，請將兩邊 <mark class='bg-yellow-200 px-1 rounded'>同乘以 100</mark> 去除小數點。",
+        steps: [
+          {
+            instruction: "列出原始除法算式：",
+            slots: [{ ans: "0.4" }, { ans: "0.25" }],
+            latexMiddle: "\\div",
+            options: ["0.4", "0.25", "40", "25", "1.6"]
+          },
+          {
+            instruction: "同乘以 100 擴分為整數算式：",
+            slots: [{ ans: "40" }, { ans: "25" }],
+            latexMiddle: "\\div",
+            options: ["40", "25", "4", "250", "16"]
+          },
+          {
+            instruction: "計算出最終比值：",
+            latexBefore: "40 \\div 25 =",
+            slots: [{ ans: "1.6" }],
+            options: ["1.4", "1.5", "1.6", "1.8", "2.5"]
+          }
+        ]
+      },
+      {
+        id: 9,
+        phase: "【第三階段：前後項小數】",
+        titleLatex: "0.6 : 0.15",
+        hint: "前後項皆為小數，請 <mark class='bg-yellow-200 px-1 rounded'>同乘以 100</mark> 後進行整數除法。",
+        steps: [
+          {
+            instruction: "列出原始除法算式：",
+            slots: [{ ans: "0.6" }, { ans: "0.15" }],
+            latexMiddle: "\\div",
+            options: ["0.6", "0.15", "60", "15", "4"]
+          },
+          {
+            instruction: "同乘以 100 擴分為整數算式：",
+            slots: [{ ans: "60" }, { ans: "15" }],
+            latexMiddle: "\\div",
+            options: ["60", "15", "6", "150", "40"]
+          },
+          {
+            instruction: "計算出最終比值：",
+            latexBefore: "60 \\div 15 =",
+            slots: [{ ans: "4" }],
+            options: ["3", "4", "5", "4.5", "6"]
+          }
+        ]
+      },
+      {
+        id: 10,
+        phase: "【第三階段：進階計算】",
+        titleLatex: "21 : 5.6",
+        hint: "後項有小數，請將前後項 <mark class='bg-yellow-200 px-1 rounded'>同乘以 10</mark> 再計算。",
+        steps: [
+          {
+            instruction: "列出原始除法算式：",
+            slots: [{ ans: "21" }, { ans: "5.6" }],
+            latexMiddle: "\\div",
+            options: ["21", "5.6", "210", "56", "3.75"]
+          },
+          {
+            instruction: "同乘以 10 擴分為整數算式：",
+            slots: [{ ans: "210" }, { ans: "56" }],
+            latexMiddle: "\\div",
+            options: ["210", "56", "21", "560", "37.5"]
+          },
+          {
+            instruction: "計算出最終比值 (小數)：",
+            latexBefore: "210 \\div 56 =",
+            slots: [{ ans: "3.75" }],
+            options: ["3.5", "3.75", "3.25", "4.25", "3.8"]
+          }
+        ]
+      }
+    ];
+
+    // --- 全局狀態控制 ---
+    let currentQIndex = 0;
+    let score = 0;
+    let totalTimerSeconds = 7 * 60; // 7 分鐘倒數
+    let timerInterval = null;
+    let userProgress = {}; // 記錄每題進度 { qIndex: { currentStep: 0, completedSteps: [], stepAttempted: {} } }
+    let isHintHidden = false; // 紀錄提示遮蔽狀態
+
+    function toggleHint() {
+      isHintHidden = !isHintHidden;
+      updateHintVisibility();
+    }
+
+    function updateHintVisibility() {
+      const hintCover = document.getElementById("question-hint-cover");
+      const toggleBtn = document.getElementById("toggle-hint-btn");
+      const hintText = document.getElementById("question-hint");
+
+      if (!hintCover || !toggleBtn || !hintText) return;
+
+      if (isHintHidden) {
+        hintCover.classList.remove("hidden");
+        hintText.classList.add("blur-sm", "select-none");
+        toggleBtn.innerHTML = "👁️ 顯示提示";
+        toggleBtn.className = "text-xs font-bold px-3 py-1 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 transition flex items-center gap-1 shadow-sm";
+      } else {
+        hintCover.classList.add("hidden");
+        hintText.classList.remove("blur-sm", "select-none");
+        toggleBtn.innerHTML = "🙈 遮蔽提示";
+        toggleBtn.className = "text-xs font-bold px-3 py-1 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition flex items-center gap-1 shadow-sm";
+      }
+    }
+
+    // --- 初始化程式 ---
+    window.addEventListener("DOMContentLoaded", () => {
+      initProgressData();
+      renderNavButtons();
+      loadQuestion(0);
+      startTimer();
+    });
+
+    function initProgressData() {
+      questionsData.forEach((q, idx) => {
+        userProgress[idx] = {
+          currentStep: 0,
+          completed: false,
+          stepData: q.steps.map(() => ({
+            userAnswers: [],
+            isCorrect: false,
+            attempted: false // 若答錯過則標記，後續答對不加分
+          }))
+        };
+      });
+    }
+
+    // --- KaTeX 自動渲染 ---
+    function renderMath() {
+      document.querySelectorAll('.math').forEach(el => {
+        if (!el.dataset.rendered) {
+          katex.render(el.dataset.latex, el, {
+            throwOnError: false,
+            displayMode: false
+          });
+          el.dataset.rendered = "true";
+        }
+      });
+
+      document.querySelectorAll('.math-display').forEach(el => {
+        if (!el.dataset.rendered) {
+          katex.render(el.dataset.latex, el, {
+            throwOnError: false,
+            displayMode: true
+          });
+          el.dataset.rendered = "true";
+        }
+      });
+    }
+
+    // --- 計時器邏輯 ---
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (totalTimerSeconds <= 0) {
+          clearInterval(timerInterval);
+          showFinishModal();
+          return;
+        }
+        totalTimerSeconds--;
+        const mins = Math.floor(totalTimerSeconds / 60);
+        const secs = totalTimerSeconds % 60;
+        document.getElementById("timer-text").innerText = 
+          `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }, 1000);
+    }
+
+    // --- 渲染導覽列 ---
+    function renderNavButtons() {
+      const container = document.getElementById("nav-questions");
+      container.innerHTML = "";
+      questionsData.forEach((q, idx) => {
+        const btn = document.createElement("button");
+        btn.id = `nav-btn-${idx}`;
+        const isCurrent = idx === currentQIndex;
+        const isDone = userProgress[idx].completed;
+
+        btn.className = `px-3 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition flex items-center gap-1 ${
+          isCurrent 
+            ? 'bg-blue-600 text-white shadow-md' 
+            : isDone 
+              ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+              : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+        }`;
+        btn.innerHTML = `${isDone ? '✓ ' : ''}題目 ${idx + 1}`;
+        btn.onclick = () => switchQuestion(idx);
+        container.appendChild(btn);
+      });
+    }
+
+    // --- 切換題目 ---
+    function switchQuestion(idx) {
+      currentQIndex = idx;
+      renderNavButtons();
+      loadQuestion(idx);
+    }
+
+    // --- 載入單一題目 ---
+    function loadQuestion(qIndex) {
+      const q = questionsData[qIndex];
+      const p = userProgress[qIndex];
+
+      // 更新題目固定資訊
+      document.getElementById("question-phase").innerText = q.phase;
+      document.getElementById("question-number-tag").innerText = `第 ${qIndex + 1} / ${questionsData.length} 題`;
+      document.getElementById("question-text").innerHTML = `<span class="math" data-latex="${q.titleLatex}"></span>`;
+      document.getElementById("question-hint").innerHTML = `💡 <b>提示：</b> ${q.hint}`;
+
+      // 更新提示遮蔽狀態
+      updateHintVisibility();
+
+      // 渲染步驟區域
+      renderSteps(qIndex);
+
+      // 重新觸發 KaTeX
+      renderMath();
+    }
+
+    // --- 打亂陣列 (Fisher-Yates Shuffle) ---
+    function shuffleArray(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // --- 渲染步驟清單 ---
+    function renderSteps(qIndex) {
+      const q = questionsData[qIndex];
+      const p = userProgress[qIndex];
+      const container = document.getElementById("steps-container");
+      container.innerHTML = "";
+
+      q.steps.forEach((step, sIdx) => {
+        // 只顯示到目前已解鎖的步驟
+        if (sIdx > p.currentStep) return;
+
+        const isCompleted = sIdx < p.currentStep || p.stepData[sIdx].isCorrect;
+        const stepState = p.stepData[sIdx];
+
+        const stepCard = document.createElement("div");
+        stepCard.id = `step-card-${sIdx}`;
+        stepCard.className = `bg-white p-5 md:p-6 rounded-2xl shadow-sm border transition-all duration-300 ${
+          isCompleted ? 'border-green-200 bg-green-50/20' : 'border-blue-200 ring-2 ring-blue-100'
+        }`;
+
+        // 標題列
+        let headerHtml = `
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+            <span class="font-extrabold text-blue-600 text-sm md:text-base flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-black">
+                ${sIdx + 1}
+              </span>
+              步驟 ${sIdx + 1}
+            </span>
+            ${isCompleted ? '<span class="text-xs font-bold text-green-600 bg-green-100 px-2.5 py-1 rounded-md">✔ 完成</span>' : ''}
+          </div>
+          <p class="text-slate-700 font-bold mb-3 text-sm md:text-base">${step.instruction}</p>
+        `;
+
+        // 算式填空 Slot 列
+        let slotsHtml = `<div class="math-line my-3">`;
+        if (step.latexBefore) {
+          slotsHtml += `<span class="math" data-latex="${step.latexBefore}"></span>`;
+        }
+
+        step.slots.forEach((slotInfo, slotIdx) => {
+          const val = stepState.userAnswers[slotIdx] || "";
+          const isSlotActive = !isCompleted && getFirstEmptySlotIndex(qIndex, sIdx) === slotIdx;
+
+          slotsHtml += `
+            <span class="slot ${isCompleted ? 'correct' : ''} ${isSlotActive ? 'active' : ''}" 
+                  onclick="clearSlot(${qIndex}, ${sIdx}, ${slotIdx})">
+              ${val}
+            </span>
+          `;
+
+          if (slotIdx === 0 && step.slots.length > 1 && step.latexMiddle) {
+            slotsHtml += `<span class="math" data-latex="${step.latexMiddle}"></span>`;
+          }
+        });
+
+        if (step.latexAfter) {
+          slotsHtml += `<span class="math" data-latex="${step.latexAfter}"></span>`;
+        }
+        slotsHtml += `</div>`;
+
+        // 動態訊息提示區 (如：再想想看 / 請填滿所有空格)
+        let feedbackHtml = `<div id="feedback-${sIdx}" class="text-sm font-bold min-h-[24px] my-2 text-rose-500"></div>`;
+
+        // 按鈕區：完成後隱藏選項按鈕以保持畫面簡潔
+        let actionAreaHtml = "";
+        if (!isCompleted) {
+          const shuffledOptions = shuffleArray(step.options);
+          actionAreaHtml = `
+            <div class="mt-4 pt-3 border-t border-slate-100">
+              <div class="text-xs text-slate-400 font-semibold mb-2">請點擊下方選項填入空格：</div>
+              <div class="flex flex-wrap gap-2.5 mb-4">
+                ${shuffledOptions.map(opt => `
+                  <button onclick="fillOption(${qIndex}, ${sIdx}, '${opt}')" 
+                          class="bg-slate-100 hover:bg-blue-50 hover:border-blue-300 text-slate-800 font-bold px-4 py-2.5 rounded-xl border border-slate-200 text-lg shadow-sm transition active:scale-95">
+                    ${opt}
+                  </button>
+                `).join('')}
+              </div>
+              <button onclick="checkStepAnswer(${qIndex}, ${sIdx})" 
+                      class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-base rounded-xl shadow-md transition">
+                檢查答案
+              </button>
+            </div>
+          `;
+        } else {
+          // 若已完成，顯示動態勾勾
+          actionAreaHtml = `
+            <div class="mt-2 flex items-center gap-2 text-green-600 font-bold text-sm">
+              <svg class="checkmark-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+              </svg>
+              答對了！非常棒！
+            </div>
+          `;
+        }
+
+        stepCard.innerHTML = headerHtml + slotsHtml + feedbackHtml + actionAreaHtml;
+        container.appendChild(stepCard);
+      });
+    }
+
+    // --- 取得當前步驟中最前方未填寫的 slot 索引 ---
+    function getFirstEmptySlotIndex(qIndex, sIdx) {
+      const step = questionsData[qIndex].steps[sIdx];
+      const answers = userProgress[qIndex].stepData[sIdx].userAnswers;
+      for (let i = 0; i < step.slots.length; i++) {
+        if (!answers[i]) return i;
+      }
+      return -1;
+    }
+
+    // --- 點擊選項填入最前方的空 slot ---
+    function fillOption(qIndex, sIdx, value) {
+      const p = userProgress[qIndex].stepData[sIdx];
+      const emptyIdx = getFirstEmptySlotIndex(qIndex, sIdx);
+
+      if (emptyIdx !== -1) {
+        p.userAnswers[emptyIdx] = value;
+        // 清除錯誤提示
+        document.getElementById(`feedback-${sIdx}`).innerText = "";
+        renderSteps(qIndex);
+        renderMath();
+      }
+    }
+
+    // --- 點擊已填入的 slot 清空該格 ---
+    function clearSlot(qIndex, sIdx, slotIdx) {
+      const isCompleted = sIdx < userProgress[qIndex].currentStep || userProgress[qIndex].stepData[sIdx].isCorrect;
+      if (isCompleted) return; // 已完成的步驟不可修改
+
+      const p = userProgress[qIndex].stepData[sIdx];
+      if (p.userAnswers[slotIdx]) {
+        p.userAnswers[slotIdx] = "";
+        document.getElementById(`feedback-${sIdx}`).innerText = "";
+        renderSteps(qIndex);
+        renderMath();
+      }
+    }
+
+    // --- 檢查答案機制 ---
+    function checkStepAnswer(qIndex, sIdx) {
+      const q = questionsData[qIndex];
+      const step = q.steps[sIdx];
+      const pStep = userProgress[qIndex].stepData[sIdx];
+      const feedbackEl = document.getElementById(`feedback-${sIdx}`);
+
+      // 1. 檢查是否填滿所有空格
+      if (pStep.userAnswers.length < step.slots.length || pStep.userAnswers.some(ans => !ans)) {
+        feedbackEl.innerText = "請填滿所有空格";
+        return;
+      }
+
+      // 2. 比對每個 slot 答案
+      let isAllCorrect = true;
+      step.slots.forEach((s, idx) => {
+        if (pStep.userAnswers[idx] !== s.ans) {
+          isAllCorrect = false;
+        }
+      });
+
+      if (isAllCorrect) {
+        // 答對邏輯
+        playSound('correct');
+        pStep.isCorrect = true;
+
+        // 若該步驟沒有答錯過，則加 1 分
+        if (!pStep.attempted) {
+          score += 1;
+          document.getElementById("score-text").innerText = score;
+        }
+
+        // 解鎖下一步或完成該題
+        if (sIdx + 1 < q.steps.length) {
+          userProgress[qIndex].currentStep = sIdx + 1;
+        } else {
+          // 本題所有步驟均完成
+          userProgress[qIndex].completed = true;
+          renderNavButtons();
+          
+          // 檢查是否全部 10 題皆完成
+          checkAllQuestionsFinished();
+        }
+
+        renderSteps(qIndex);
+        renderMath();
+
+        // 平滑捲動至下一個步驟
+        setTimeout(() => {
+          const nextCard = document.getElementById(`step-card-${sIdx + 1}`);
+          if (nextCard) {
+            nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 200);
+
+      } else {
+        // 答錯邏輯
+        playSound('wrong');
+        pStep.attempted = true; // 標記答錯過，後續訂正後不給分
+        feedbackEl.innerText = "再想想看喔！";
+      }
+    }
+
+    // --- 檢查是否全部題目完成 ---
+    function checkAllQuestionsFinished() {
+      const allDone = Object.values(userProgress).every(p => p.completed);
+      if (allDone) {
+        clearInterval(timerInterval);
+        setTimeout(() => {
+          showFinishModal();
+        }, 600);
+      }
+    }
+
+    // --- 重置當前題目 ---
+    function resetCurrentQuestion() {
+      const p = userProgress[currentQIndex];
+      p.currentStep = 0;
+      p.completed = false;
+      p.stepData.forEach(sd => {
+        sd.userAnswers = [];
+        sd.isCorrect = false;
+        sd.attempted = false;
+      });
+      renderNavButtons();
+      loadQuestion(currentQIndex);
+    }
+
+    // --- 重來所有題目 (再做一次) ---
+    function restartAll() {
+      score = 0;
+      totalTimerSeconds = 7 * 60;
+      document.getElementById("score-text").innerText = "0";
+      closeModal();
+      initProgressData();
+      renderNavButtons();
+      loadQuestion(0);
+      startTimer();
+    }
+
+    // --- 結算 Modal 控制 ---
+    function showFinishModal() {
+      const modal = document.getElementById("finish-modal");
+      document.getElementById("modal-final-score").innerText = score;
+      
+      const elapsedSeconds = (7 * 60) - totalTimerSeconds;
+      const mins = Math.floor(elapsedSeconds / 60);
+      const secs = elapsedSeconds % 60;
+      document.getElementById("modal-final-time").innerText = 
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      modal.classList.remove("hidden");
+    }
+
+    function closeModal() {
+      document.getElementById("finish-modal").classList.add("hidden");
+    }
+  </script>
+</body>
+</html>
